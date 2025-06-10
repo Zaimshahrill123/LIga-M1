@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football League Management</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            padding: 20px; 
+            background-color: #f0f4f8; 
+            color: #333; 
+        }
+        .card { 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            border-radius: 10px; 
+        }
+        .table { 
+            background-color: white; 
+            border-radius: 10px; 
+            overflow: hidden; 
+        }
+        .completed { 
+            background-color: #d4edda; 
+        }
+        .pending { 
+            background-color: #fff3cd; 
+        }
+        .score-input { 
+            width: 60px; 
+            text-align: center; 
+            display: inline-block; 
+            border-radius: 5px; 
+        }
+        .team-logo { 
+            width: 30px; 
+            height: 30px; 
+            margin-right: 10px; 
+            border-radius: 50%; 
+        }
+        .match-row { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+        }
+        .header { 
+            background-color: #1d3557; 
+            color: white; 
+            padding: 15px 0; 
+            margin-bottom: 30px; 
+            border-radius: 10px; 
+        }
+        .header h1 { 
+            font-weight: 600; 
+        }
+        .card-header { 
+            font-weight: 500; 
+            border-radius: 10px 10px 0 0; 
+        }
+        .bg-primary { 
+            background-color: #457b9d !important; 
+        }
+        .bg-info { 
+            background-color: #a8dadc !important; 
+        }
+        .bg-warning { 
+            background-color: #f4a261 !important; 
+        }
+        .btn { 
+            border-radius: 5px; 
+        }
+        .form-control { 
+            border-radius: 5px; 
+        }
+        .badge { 
+            font-size: 0.9rem; 
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #1d3557;">
+      <div class="container">
+        <a class="navbar-brand fw-bold" href="#">Liga M</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="fixtures.html">Fixtures</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="standing.html">Standings</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="stats.html">Stats</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="admin.html">Admin</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+
+    <div class="container">
+        <!-- Add Team Section -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h5 mb-0">Add New Team</h2>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <input type="text" id="teamName" class="form-control" placeholder="Team Name">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="file" id="teamLogo" class="form-control" accept="image/*">
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="addTeam()" class="btn btn-success w-100">Add Team</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Standings Section -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h2 class="h5 mb-0">League Standings</h2>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-striped table-hover" id="standingsTable"></table>
+            </div>
+        </div>
+
+        <!-- Fixtures Section -->
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h2 class="h5 mb-0">Match Fixtures</h2>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <select id="weekSelect" class="form-select"></select>
+                </div>
+                <div id="fixtureContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+        import { getDatabase, ref, push, set, update, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDED0er_suruofTZnxoL54rfPwFiLbzq3s",
+            authDomain: "liga-m-2247a.firebaseapp.com",
+            databaseURL: "https://liga-m-2247a-default-rtdb.firebaseio.com",
+            projectId: "liga-m-2247a",
+            storageBucket: "liga-m-2247a.appspot.com",
+            messagingSenderId: "795730378066",
+            appId: "1:795730378066:web:eeea89fbc5e31f5f798e8b",
+            measurementId: "G-XYMEP2D52Y",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Add a new team to the database
+        function addTeam() {
+            const teamName = document.getElementById("teamName").value.trim();
+            const logoFile = document.getElementById("teamLogo").files[0];
+
+            if (!teamName || !logoFile) {
+                alert("Please enter a team name and select a logo!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.readAsDataURL(logoFile);
+            reader.onload = function () {
+                const base64String = reader.result.split(',')[1];
+                const teamRef = ref(database, "Teams/");
+                const newTeamRef = push(teamRef);
+                set(newTeamRef, { 
+                    team_name: teamName, 
+                    logo: base64String,
+                    win: 0,
+                    lose: 0,
+                    draw: 0,
+                    points: 0,
+                    goalsFor: 0,
+                    goalsAgainst: 0
+                }).then(() => {
+                    alert("Team added successfully!");
+                    document.getElementById("teamName").value = "";
+                    document.getElementById("teamLogo").value = "";
+                    loadTeams();
+                }).catch(error => {
+                    console.error("Error adding team:", error);
+                    alert("Failed to add team. Please check console for details.");
+                });
+            };
+        }
+
+        // Manually update team statistics
+        function updateResult(teamKey, win, draw, lose) {
+            const points = (win * 3) + (draw * 1);
+            update(ref(database, `Teams/${teamKey}`), {
+                win: parseInt(win),
+                draw: parseInt(draw),
+                lose: parseInt(lose),
+                points: points
+            }).then(() => {
+                alert("Results updated successfully!");
+                loadTeams();
+            }).catch(error => {
+                console.error("Error updating results:", error);
+                alert("Failed to update results. Please check console for details.");
+            });
+        }
+
+        // Load all teams and display standings
+        function loadTeams() {
+            const teamRef = ref(database, "Teams/");
+            onValue(teamRef, (snapshot) => {
+                let teams = [];
+                snapshot.forEach((childSnapshot) => {
+                    teams.push({ key: childSnapshot.key, ...childSnapshot.val() });
+                });
+                
+                // Sort by points (descending), then goal difference (descending)
+                teams.sort((a, b) => {
+                    if (b.points !== a.points) return b.points - a.points;
+                    const aDiff = (a.goalsFor || 0) - (a.goalsAgainst || 0);
+                    const bDiff = (b.goalsFor || 0) - (b.goalsAgainst || 0);
+                    return bDiff - aDiff;
+                });
+
+                const standingsTable = document.getElementById("standingsTable");
+                standingsTable.innerHTML = `
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Pos</th>
+                            <th>Team</th>
+                            <th>Played</th>
+                            <th>W</th>
+                            <th>D</th>
+                            <th>L</th>
+                            <th>GF</th>
+                            <th>GA</th>
+                            <th>GD</th>
+                            <th>Pts</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>`;
+                
+                const tbody = standingsTable.querySelector('tbody');
+                teams.forEach((team, index) => {
+                    const played = (team.win || 0) + (team.draw || 0) + (team.lose || 0);
+                    const gd = (team.goalsFor || 0) - (team.goalsAgainst || 0);
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td><img src="data:image/png;base64,${team.logo}" class="team-logo"> ${team.team_name}</td>
+                            <td>${played}</td>
+                            <td><input type='number' value='${team.win || 0}' id='win-${team.key}' min="0" class="form-control form-control-sm"></td>
+                            <td><input type='number' value='${team.draw || 0}' id='draw-${team.key}' min="0" class="form-control form-control-sm"></td>
+                            <td><input type='number' value='${team.lose || 0}' id='lose-${team.key}' min="0" class="form-control form-control-sm"></td>
+                            <td>${team.goalsFor || 0}</td>
+                            <td>${team.goalsAgainst || 0}</td>
+                            <td>${gd}</td>
+                            <td><strong>${team.points || 0}</strong></td>
+                            <td class="action-buttons">
+                                <button onclick="updateResult('${team.key}', 
+                                    document.getElementById('win-${team.key}').value, 
+                                    document.getElementById('draw-${team.key}').value, 
+                                    document.getElementById('lose-${team.key}').value)"
+                                    class="btn btn-sm btn-primary">
+                                    Update
+                                </button>
+                                <button onclick="deleteTeam('${team.key}')" class="btn btn-sm btn-danger">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>`;
+                });
+
+                if (teams.length >= 2) {
+                    generateFixtures(teams);
+                }
+                loadFixtures();
+            }, (error) => {
+                console.error("Error loading teams:", error);
+                alert("Failed to load teams. Please check console for details.");
+            });
+        }
+
+        // Generate round-robin fixtures for all teams
+        function generateFixtures(teams) {
+            if (teams.length < 2) return;
+
+            const fixtureRef = ref(database, "Fixtures/");
+            remove(fixtureRef).then(() => {
+                let weeks = [];
+                const totalTeams = teams.length;
+                const rounds = totalTeams - 1;
+                const matchesPerRound = Math.floor(totalTeams / 2);
+
+                // Create array of team indices
+                let teamIndices = teams.map((_, i) => i);
+
+                // Generate rounds
+                for (let round = 0; round < rounds; round++) {
+                    weeks[round] = [];
+
+                    for (let match = 0; match < matchesPerRound; match++) {
+                        const homeIdx = teamIndices[match];
+                        const awayIdx = teamIndices[totalTeams - 1 - match];
+
+                        // Ensure teams do not face themselves
+                        if (homeIdx !== undefined && awayIdx !== undefined && homeIdx !== awayIdx) {
+                            weeks[round].push({
+                                home: teams[homeIdx].team_name,
+                                away: teams[awayIdx].team_name,
+                                homeKey: teams[homeIdx].key,
+                                awayKey: teams[awayIdx].key,
+                                homeScore: null,
+                                awayScore: null,
+                                completed: false,
+                                round: round + 1
+                            });
+                        }
+                    }
+
+                    // Rotate teams for next round (except first team)
+                    teamIndices.splice(1, 0, teamIndices.pop());
+                }
+
+                // Save all fixtures to database
+                weeks.forEach((matches, index) => {
+                    set(ref(database, `Fixtures/Week_${index + 1}`), matches);
+                });
+            }).catch(error => {
+                console.error("Error generating fixtures:", error);
+                alert("Failed to generate fixtures. Please check console for details.");
+            });
+        }
+
+        // Load all fixtures from database
+        function loadFixtures() {
+            const fixtureRef = ref(database, "Fixtures/");
+            onValue(fixtureRef, (snapshot) => {
+                let fixtures = [];
+                let weekDropdown = document.getElementById("weekSelect");
+                weekDropdown.innerHTML = "<option value=''>Select a Week</option>";
+
+                snapshot.forEach((weekSnapshot) => {
+                    let week = weekSnapshot.key.replace("Week_", "");
+                    let matches = [];
+                    weekSnapshot.forEach((matchSnapshot) => {
+                        matches.push({ id: matchSnapshot.key, ...matchSnapshot.val() });
+                    });
+                    fixtures.push({ week, matches });
+                    weekDropdown.innerHTML += `<option value="${week}">Week ${week}</option>`;
+                });
+
+                weekDropdown.onchange = function () {
+                    displayFixtures(fixtures, weekDropdown.value);
+                };
+                
+                if (fixtures.length > 0) {
+                    displayFixtures(fixtures, fixtures[0].week);
+                }
+            }, (error) => {
+                console.error("Error loading fixtures:", error);
+                alert("Failed to load fixtures. Please check console for details.");
+            });
+        }
+
+        // Display fixtures for a specific week
+        function displayFixtures(fixtures, selectedWeek) {
+            const fixtureContainer = document.getElementById("fixtureContainer");
+            fixtureContainer.innerHTML = "";
+
+            // Fetch results to check which fixtures are completed
+            get(ref(database, "Results/")).then(resultsSnapshot => {
+                const results = resultsSnapshot.exists() ? resultsSnapshot.val() : {};
+                fixtures.forEach(weekData => {
+                    if (weekData.week === selectedWeek) {
+                        let table = `
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Match</th>
+                                            <th>Score</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                        weekData.matches.forEach(match => {
+                            // Find the result by matching home and away team names
+                            let foundResult = null;
+                            for (const key in results) {
+                                const res = results[key];
+                                if (res.homeTeam === match.home && res.awayTeam === match.away) {
+                                    foundResult = res;
+                                    break;
+                                }
+                            }
+                            const isCompleted = foundResult ? foundResult.completed : match.completed;
+                            const rowClass = isCompleted ? "completed" : "pending";
+                            const homeScore = foundResult && foundResult.homeScore !== undefined ? foundResult.homeScore : (match.homeScore !== null ? match.homeScore : "");
+                            const awayScore = foundResult && foundResult.awayScore !== undefined ? foundResult.awayScore : (match.awayScore !== null ? match.awayScore : "");
+
+                            table += `
+                                <tr class="${rowClass}">
+                                    <td>${match.home} vs ${match.away}</td>
+                                    <td>
+                                        <div class="match-row">
+                                            <input type="number" class="score-input form-control form-control-sm" 
+                                                id="home-score-${match.id}" 
+                                                value="${homeScore}" 
+                                                ${isCompleted ? "disabled" : ""} min="0">
+                                            <span> - </span>
+                                            <input type="number" class="score-input form-control form-control-sm" 
+                                                id="away-score-${match.id}" 
+                                                value="${awayScore}" 
+                                                ${isCompleted ? "disabled" : ""} min="0">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge ${isCompleted ? 'bg-success' : 'bg-warning text-dark'}">
+                                            ${isCompleted ? "Completed" : "Pending"}
+                                        </span>
+                                    </td>
+                                    <td class="action-buttons">
+                                        ${isCompleted ? 
+                                            `<button onclick="enableEdit('${match.id}')"
+                                                class="btn btn-sm btn-secondary">
+                                                Edit
+                                            </button>` : 
+                                            `<button onclick="saveResult('${match.id}', '${weekData.week}')"
+                                                class="btn btn-sm btn-success">
+                                                Save
+                                            </button>`}
+                                    </td>
+                                </tr>`;
+                        });
+                        table += `</tbody></table></div>`;
+                        fixtureContainer.innerHTML = table;
+                    }
+                });
+            });
+        }
+
+        // Enable editing for a specific match
+        function enableEdit(matchId) {
+            const homeScoreInput = document.getElementById(`home-score-${matchId}`);
+            const awayScoreInput = document.getElementById(`away-score-${matchId}`);
+            homeScoreInput.disabled = false;
+            awayScoreInput.disabled = false;
+
+            const actionButton = homeScoreInput.closest('tr').querySelector('.action-buttons');
+            actionButton.innerHTML = `
+                <button onclick="saveResult('${matchId}', '${document.getElementById('weekSelect').value}')"
+                    class="btn btn-sm btn-success">
+                    Save
+                </button>`;
+        }
+
+        // Save match result and update team statistics
+        async function saveResult(matchId, week) {
+            const homeScoreInput = document.getElementById(`home-score-${matchId}`);
+            const awayScoreInput = document.getElementById(`away-score-${matchId}`);
+            
+            const homeScore = parseInt(homeScoreInput.value);
+            const awayScore = parseInt(awayScoreInput.value);
+            
+            if (isNaN(homeScore) || isNaN(awayScore) || homeScore < 0 || awayScore < 0) {
+                alert("Please enter valid non-negative scores!");
+                return;
+            }
+
+            try {
+                // Get the current match data
+                const matchRef = ref(database, `Fixtures/Week_${week}/${matchId}`);
+                const matchSnapshot = await get(matchRef);
+                
+                if (!matchSnapshot.exists()) {
+                    alert("Match data not found!");
+                    return;
+                }
+
+                const match = matchSnapshot.val();
+
+                // Get current team data for both teams
+                const homeTeamRef = ref(database, `Teams/${match.homeKey}`);
+                const awayTeamRef = ref(database, `Teams/${match.awayKey}`);
+                
+                const [homeSnapshot, awaySnapshot] = await Promise.all([
+                    get(homeTeamRef),
+                    get(awayTeamRef)
+                ]);
+                
+                if (!homeSnapshot.exists() || !awaySnapshot.exists()) {
+                    alert("One or both teams not found!");
+                    return;
+                }
+
+                const homeTeam = homeSnapshot.val();
+                const awayTeam = awaySnapshot.val();
+
+                // Calculate new statistics
+                const homeUpdates = {
+                    goalsFor: (homeTeam.goalsFor || 0) + homeScore,
+                    goalsAgainst: (homeTeam.goalsAgainst || 0) + awayScore,
+                    win: homeTeam.win || 0,
+                    lose: homeTeam.lose || 0,
+                    draw: homeTeam.draw || 0
+                };
+                
+                const awayUpdates = {
+                    goalsFor: (awayTeam.goalsFor || 0) + awayScore,
+                    goalsAgainst: (awayTeam.goalsAgainst || 0) + homeScore,
+                    win: awayTeam.win || 0,
+                    lose: awayTeam.lose || 0,
+                    draw: awayTeam.draw || 0
+                };
+
+                // Update win/lose/draw records based on result
+                if (homeScore > awayScore) {
+                    homeUpdates.win += 1;
+                    awayUpdates.lose += 1;
+                } else if (homeScore < awayScore) {
+                    homeUpdates.lose += 1;
+                    awayUpdates.win += 1;
+                } else {
+                    homeUpdates.draw += 1;
+                    awayUpdates.draw += 1;
+                }
+
+                // Calculate points
+                homeUpdates.points = (homeUpdates.win * 3) + (homeUpdates.draw * 1);
+                awayUpdates.points = (awayUpdates.win * 3) + (awayUpdates.draw * 1);
+
+                // Ensure the Results node exists and save the result
+                const resultRef = ref(database, `Results/${matchId}`);
+                await set(resultRef, {
+                    homeTeam: match.home,
+                    awayTeam: match.away,
+                    homeScore: homeScore,
+                    awayScore: awayScore,
+                    week: week,
+                    completed: true
+                });
+
+                // Update match status to completed in Fixtures
+                await update(matchRef, {
+                    homeScore: homeScore,
+                    awayScore: awayScore,
+                    completed: true
+                });
+
+                // Update team statistics
+                await Promise.all([
+                    update(homeTeamRef, homeUpdates),
+                    update(awayTeamRef, awayUpdates)
+                ]);
+
+                // Update the UI immediately
+                homeScoreInput.value = homeScore; // Ensure the score remains displayed
+                awayScoreInput.value = awayScore; // Ensure the score remains displayed
+                homeScoreInput.disabled = true;
+                awayScoreInput.disabled = true;
+
+                const statusBadge = homeScoreInput.closest('tr').querySelector('.badge');
+                statusBadge.classList.remove('bg-warning', 'text-dark');
+                statusBadge.classList.add('bg-success');
+                statusBadge.textContent = "Completed";
+
+                const actionButtons = homeScoreInput.closest('tr').querySelector('.action-buttons');
+                actionButtons.innerHTML = `
+                    <button onclick="enableEdit('${matchId}')"
+                        class="btn btn-sm btn-secondary">
+                        Edit
+                    </button>`;
+
+                alert("Result saved successfully!");
+            } catch (error) {
+                console.error("Error saving result:", error);
+                alert(`Failed to save result: ${error.message}`);
+            }
+        }
+
+        // Undo a completed match result
+        async function undoResult(matchId, week) {
+            try {
+                // Get the match data
+                const matchRef = ref(database, `Fixtures/Week_${week}/${matchId}`);
+                const matchSnapshot = await get(matchRef);
+                
+                if (!matchSnapshot.exists()) {
+                    alert("Match data not found!");
+                    return;
+                }
+
+                const match = matchSnapshot.val();
+                
+                if (!match.completed) {
+                    alert("This match is not completed!");
+                    return;
+                }
+
+                // Get current team data for both teams
+                const homeTeamRef = ref(database, `Teams/${match.homeKey}`);
+                const awayTeamRef = ref(database, `Teams/${match.awayKey}`);
+                
+                const [homeSnapshot, awaySnapshot] = await Promise.all([
+                    get(homeTeamRef),
+                    get(awayTeamRef)
+                ]);
+                
+                if (!homeSnapshot.exists() || !awaySnapshot.exists()) {
+                    alert("One or both teams not found!");
+                    return;
+                }
+
+                const homeTeam = homeSnapshot.val();
+                const awayTeam = awaySnapshot.val();
+
+                // Calculate statistics to revert
+                const homeScore = match.homeScore;
+                const awayScore = match.awayScore;
+                
+                const homeUpdates = {
+                    goalsFor: (homeTeam.goalsFor || 0) - homeScore,
+                    goalsAgainst: (homeTeam.goalsAgainst || 0) - awayScore,
+                    win: homeTeam.win || 0,
+                    lose: homeTeam.lose || 0,
+                    draw: homeTeam.draw || 0
+                };
+                
+                const awayUpdates = {
+                    goalsFor: (awayTeam.goalsFor || 0) - awayScore,
+                    goalsAgainst: (awayTeam.goalsAgainst || 0) - homeScore,
+                    win: awayTeam.win || 0,
+                    lose: awayTeam.lose || 0,
+                    draw: awayTeam.draw || 0
+                };
+
+                // Revert win/lose/draw records
+                if (homeScore > awayScore) {
+                    homeUpdates.win -= 1;
+                    awayUpdates.lose -= 1;
+                } else if (homeScore < awayScore) {
+                    homeUpdates.lose -= 1;
+                    awayUpdates.win -= 1;
+                } else {
+                    homeUpdates.draw -= 1;
+                    awayUpdates.draw -= 1;
+                }
+
+                // Recalculate points
+                homeUpdates.points = (homeUpdates.win * 3) + (homeUpdates.draw * 1);
+                awayUpdates.points = (awayUpdates.win * 3) + (awayUpdates.draw * 1);
+
+                // Update all data in a single transaction
+                await Promise.all([
+                    // Reset match status
+                    update(matchRef, {
+                        homeScore: null,
+                        awayScore: null,
+                        completed: false
+                    }),
+                    
+                    // Update home team
+                    update(homeTeamRef, homeUpdates),
+                    
+                    // Update away team
+                    update(awayTeamRef, awayUpdates)
+                ]);
+
+                alert("Result undone successfully!");
+                loadTeams(); // Refresh the display
+            } catch (error) {
+                console.error("Error undoing result:", error);
+                alert(`Failed to undo result: ${error.message}`);
+            }
+        }
+
+        // Delete a team from the database
+        function deleteTeam(teamKey) {
+            if (confirm("Are you sure you want to delete this team? This action cannot be undone.")) {
+                remove(ref(database, `Teams/${teamKey}`))
+                    .then(() => {
+                        alert("Team deleted successfully!");
+                        loadTeams();
+                    })
+                    .catch(error => {
+                        console.error("Error deleting team:", error);
+                        alert("Failed to delete team. Please check console for details.");
+                    });
+            }
+        }
+
+        // Initialize the app when window loads
+        window.onload = loadTeams;
+        window.addTeam = addTeam;
+        window.updateResult = updateResult;
+        window.saveResult = saveResult;
+        window.undoResult = undoResult;
+        window.deleteTeam = deleteTeam;
+    </script>
+</body>
+</html>
