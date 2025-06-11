@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats | Liga M</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        @media (max-width: 576px) {
+            .card, .table, .navbar, .header {
+                border-radius: 0 !important;
+                margin-bottom: 10px !important;
+            }
+            .team-logo {
+                width: 24px !important;
+                height: 24px !important;
+                margin-right: 6px !important;
+            }
+            .match-row {
+                flex-direction: column;
+                gap: 2px;
+            }
+            .form-control, .form-select {
+                font-size: 0.95rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #1d3557;">
+      <div class="container">
+        <a class="navbar-brand fw-bold" href="#">Liga M</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="fixtures.html">Fixtures</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="standing.html">Standings</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="stats.html">Stats</a>
+            </li>
+            
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Top Goal Scorers</h2>
+        <div class="table-responsive">
+            <table class="table table-striped text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Team</th>
+                        <th>Goals</th>
+                    </tr>
+                </thead>
+                <tbody id="topScorersTable"></tbody>
+            </table>
+        </div>
+
+        <h2 class="text-center mb-4">Most Clean Sheets (Team)</h2>
+        <div class="table-responsive">
+            <table class="table table-striped text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Team</th>
+                        <th>Clean Sheets</th>
+                    </tr>
+                </thead>
+                <tbody id="cleanSheetsTable"></tbody>
+            </table>
+        </div>
+
+      
+    </div>
+
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="stats.js"></script>
+    <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDED0er_suruofTZnxoL54rfPwFiLbzq3s",
+    authDomain: "liga-m-2247a.firebaseapp.com",
+    databaseURL: "https://liga-m-2247a-default-rtdb.firebaseio.com",
+    projectId: "liga-m-2247a",
+    storageBucket: "liga-m-2247a.appspot.com",
+    messagingSenderId: "795730378066",
+    appId: "1:795730378066:web:eeea89fbc5e31f5f798e8b",
+    measurementId: "G-XYMEP2D52Y",
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// 1. Top Goal Scorers (from Results)
+async function loadTopScorers() {
+    const resultsSnap = await get(ref(db, "Results/"));
+    const scorers = {};
+    resultsSnap.forEach(child => {
+        const match = child.val();
+        // Example: If you store player goals, adjust here. Otherwise, use team goals.
+        // We'll use team goals for demo.
+        if (!scorers[match.homeTeam]) scorers[match.homeTeam] = 0;
+        if (!scorers[match.awayTeam]) scorers[match.awayTeam] = 0;
+        scorers[match.homeTeam] += Number(match.homeScore) || 0;
+        scorers[match.awayTeam] += Number(match.awayScore) || 0;
+    });
+    // Convert to array and sort
+    const arr = Object.entries(scorers).map(([team, goals]) => ({ team, goals }));
+    arr.sort((a, b) => b.goals - a.goals);
+    // Render
+    const tbody = document.getElementById("topScorersTable");
+    tbody.innerHTML = arr.map(s => `
+        <tr>
+            <td>${s.team}</td>
+            <td>${s.goals}</td>
+        </tr>
+    `).join('');
+}
+
+// 2. Most Clean Sheets (from Results)
+async function loadCleanSheets() {
+    const resultsSnap = await get(ref(db, "Results/"));
+    const cleanSheets = {};
+    resultsSnap.forEach(child => {
+        const match = child.val();
+        // Home clean sheet
+        if (Number(match.awayScore) === 0) {
+            cleanSheets[match.homeTeam] = (cleanSheets[match.homeTeam] || 0) + 1;
+        }
+        // Away clean sheet
+        if (Number(match.homeScore) === 0) {
+            cleanSheets[match.awayTeam] = (cleanSheets[match.awayTeam] || 0) + 1;
+        }
+    });
+    // Convert to array and sort
+    const arr = Object.entries(cleanSheets).map(([team, sheets]) => ({ team, sheets }));
+    arr.sort((a, b) => b.sheets - a.sheets);
+    // Render
+    const tbody = document.getElementById("cleanSheetsTable");
+    tbody.innerHTML = arr.map(s => `
+        <tr>
+            <td>${s.team}</td>
+            <td>${s.sheets}</td>
+        </tr>
+    `).join('');
+}
+
+
+// Load all stats on page load
+loadTopScorers();
+loadCleanSheets();
+loadGoalsFor();
+</script>
+</body>
+</html>
