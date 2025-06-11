@@ -11,6 +11,24 @@
         .header h1 { font-weight: 600; }
         .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 10px; }
         .table { background-color: white; border-radius: 10px; overflow: hidden; }
+        @media (max-width: 576px) {
+            .card, .table, .navbar, .header {
+                border-radius: 0 !important;
+                margin-bottom: 10px !important;
+            }
+            .team-logo {
+                width: 24px !important;
+                height: 24px !important;
+                margin-right: 6px !important;
+            }
+            .match-row {
+                flex-direction: column;
+                gap: 2px;
+            }
+            .form-control, .form-select {
+                font-size: 0.95rem;
+            }
+        }
     </style>
 </head>
 <body>
